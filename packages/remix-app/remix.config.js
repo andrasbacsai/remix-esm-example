@@ -2,5 +2,6 @@
 module.exports = {
   ignoredRouteFiles: ["**/.*"],
   devServerPort: 8002,
+  serverBuildTarget: "vercel"
 };
 
