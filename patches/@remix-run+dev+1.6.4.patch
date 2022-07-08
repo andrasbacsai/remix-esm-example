@@ -1,0 +1,2761 @@
+diff --git a/node_modules/@remix-run/dev/build.d.ts b/node_modules/@remix-run/dev/dist/build.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/build.d.ts
+rename to node_modules/@remix-run/dev/dist/build.d.ts
+diff --git a/node_modules/@remix-run/dev/build.js b/node_modules/@remix-run/dev/dist/build.js
+similarity index 97%
+rename from node_modules/@remix-run/dev/build.js
+rename to node_modules/@remix-run/dev/dist/build.js
+index 327b3f5..2f30b6d 100644
+--- a/node_modules/@remix-run/dev/build.js
++++ b/node_modules/@remix-run/dev/dist/build.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cache.d.ts b/node_modules/@remix-run/dev/dist/cache.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cache.d.ts
+rename to node_modules/@remix-run/dev/dist/cache.d.ts
+diff --git a/node_modules/@remix-run/dev/cache.js b/node_modules/@remix-run/dev/dist/cache.js
+similarity index 97%
+rename from node_modules/@remix-run/dev/cache.js
+rename to node_modules/@remix-run/dev/dist/cache.js
+index 042aebb..4f6b09d 100644
+--- a/node_modules/@remix-run/dev/cache.js
++++ b/node_modules/@remix-run/dev/dist/cache.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli.d.ts b/node_modules/@remix-run/dev/dist/cli.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli.d.ts
+rename to node_modules/@remix-run/dev/dist/cli.d.ts
+diff --git a/node_modules/@remix-run/dev/cli.js b/node_modules/@remix-run/dev/dist/cli.js
+similarity index 93%
+rename from node_modules/@remix-run/dev/cli.js
+rename to node_modules/@remix-run/dev/dist/cli.js
+index 7d28712..fd94c2c 100755
+--- a/node_modules/@remix-run/dev/cli.js
++++ b/node_modules/@remix-run/dev/dist/cli.js
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env node
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/checkGitStatus.d.ts b/node_modules/@remix-run/dev/dist/cli/checkGitStatus.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/checkGitStatus.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/checkGitStatus.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/checkGitStatus.js b/node_modules/@remix-run/dev/dist/cli/checkGitStatus.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/checkGitStatus.js
+rename to node_modules/@remix-run/dev/dist/cli/checkGitStatus.js
+index e0bb782..28eb229 100644
+--- a/node_modules/@remix-run/dev/cli/checkGitStatus.js
++++ b/node_modules/@remix-run/dev/dist/cli/checkGitStatus.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/commands.d.ts b/node_modules/@remix-run/dev/dist/cli/commands.d.ts
+similarity index 86%
+rename from node_modules/@remix-run/dev/cli/commands.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/commands.d.ts
+index 2e3e320..f137745 100644
+--- a/node_modules/@remix-run/dev/cli/commands.d.ts
++++ b/node_modules/@remix-run/dev/dist/cli/commands.d.ts
+@@ -9,7 +9,10 @@ export declare function create({ appTemplate, projectDir, remixVersion, installD
+     githubToken?: string;
+     debug?: boolean;
+ }): Promise<void>;
+-export declare function init(projectDir: string): Promise<void>;
++declare type InitFlags = {
++    deleteScript?: boolean;
++};
++export declare function init(projectDir: string, { deleteScript }?: InitFlags): Promise<void>;
+ export declare function setup(platformArg?: string): Promise<void>;
+ export declare function routes(remixRoot?: string, formatArg?: string): Promise<void>;
+ export declare function build(remixRoot: string, modeArg?: string, sourcemap?: boolean): Promise<void>;
+diff --git a/node_modules/@remix-run/dev/cli/commands.js b/node_modules/@remix-run/dev/dist/cli/commands.js
+similarity index 89%
+rename from node_modules/@remix-run/dev/cli/commands.js
+rename to node_modules/@remix-run/dev/dist/cli/commands.js
+index 1414398..62b3a3a 100644
+--- a/node_modules/@remix-run/dev/cli/commands.js
++++ b/node_modules/@remix-run/dev/dist/cli/commands.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -32,6 +32,7 @@ var create$1 = require('./create.js');
+ var getPreferredPackageManager = require('./getPreferredPackageManager.js');
+ var setup$1 = require('./setup.js');
+ require('inquirer');
++require('./migrate/migrations/convert-to-javascript/index.js');
+ require('./migrate/migrations/replace-remix-imports/index.js');
+ 
+ function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+@@ -85,37 +86,45 @@ async function create({
+   spinner.stop();
+   spinner.clear();
+ }
+-async function init(projectDir) {
++async function init(projectDir, {
++  deleteScript = true
++} = {}) {
+   let initScriptDir = path__namespace.join(projectDir, "remix.init");
+   let initScript = path__namespace.resolve(initScriptDir, "index.js");
++
++  if (!(await fse__namespace.pathExists(initScript))) {
++    return;
++  }
++
+   let initPackageJson = path__namespace.resolve(initScriptDir, "package.json");
+   let isTypeScript = fse__namespace.existsSync(path__namespace.join(projectDir, "tsconfig.json"));
++  let packageManager = getPreferredPackageManager.getPreferredPackageManager();
+ 
+-  if (await fse__namespace.pathExists(initScript)) {
+-    let packageManager = getPreferredPackageManager.getPreferredPackageManager();
+-
+-    if (await fse__namespace.pathExists(initPackageJson)) {
+-      child_process.execSync(`${packageManager} install`, {
+-        cwd: initScriptDir,
+-        stdio: "ignore"
+-      });
+-    }
++  if (await fse__namespace.pathExists(initPackageJson)) {
++    child_process.execSync(`${packageManager} install`, {
++      cwd: initScriptDir,
++      stdio: "ignore"
++    });
++  }
+ 
+-    let initFn = require(initScript);
++  let initFn = require(initScript);
+ 
+-    try {
+-      await initFn({
+-        isTypeScript,
+-        packageManager,
+-        rootDirectory: projectDir
+-      });
+-    } catch (error) {
+-      if (error instanceof Error) {
+-        error.message = `${colors.error("🚨 Oops, remix.init failed")}\n\n${error.message}`;
+-      }
++  try {
++    await initFn({
++      isTypeScript,
++      packageManager,
++      rootDirectory: projectDir
++    });
+ 
+-      throw error;
++    if (deleteScript) {
++      await fse__namespace.remove(initScriptDir);
++    }
++  } catch (error) {
++    if (error instanceof Error) {
++      error.message = `${colors.error("🚨 Oops, remix.init failed")}\n\n${error.message}`;
+     }
++
++    throw error;
+   }
+ }
+ async function setup(platformArg) {
+@@ -276,7 +285,7 @@ async function dev(remixRoot, modeArg, portArg) {
+         let onListen = () => {
+           var _Object$values$flat$f;
+ 
+-          let address = process.env.HOST || ((_Object$values$flat$f = Object.values(os__default["default"].networkInterfaces()).flat().find(ip => (ip === null || ip === void 0 ? void 0 : ip.family) === "IPv4" && !ip.internal)) === null || _Object$values$flat$f === void 0 ? void 0 : _Object$values$flat$f.address);
++          let address = process.env.HOST || ((_Object$values$flat$f = Object.values(os__default["default"].networkInterfaces()).flat().find(ip => String(ip === null || ip === void 0 ? void 0 : ip.family).includes("4") && !(ip !== null && ip !== void 0 && ip.internal))) === null || _Object$values$flat$f === void 0 ? void 0 : _Object$values$flat$f.address);
+ 
+           if (!address) {
+             console.log(`Remix App Server started at http://localhost:${port}`);
+diff --git a/node_modules/@remix-run/dev/cli/convert-to-javascript.d.ts b/node_modules/@remix-run/dev/dist/cli/convert-to-javascript.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/convert-to-javascript.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/convert-to-javascript.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/convert-to-javascript.js b/node_modules/@remix-run/dev/dist/cli/convert-to-javascript.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/cli/convert-to-javascript.js
+rename to node_modules/@remix-run/dev/dist/cli/convert-to-javascript.js
+index b873bb7..5d88cf5 100644
+--- a/node_modules/@remix-run/dev/cli/convert-to-javascript.js
++++ b/node_modules/@remix-run/dev/dist/cli/convert-to-javascript.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/create.d.ts b/node_modules/@remix-run/dev/dist/cli/create.d.ts
+similarity index 83%
+rename from node_modules/@remix-run/dev/cli/create.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/create.d.ts
+index 442b203..d2ecee8 100644
+--- a/node_modules/@remix-run/dev/cli/create.d.ts
++++ b/node_modules/@remix-run/dev/dist/cli/create.d.ts
+@@ -9,7 +9,9 @@ interface CreateAppArgs {
+ }
+ export declare function createApp({ appTemplate, projectDir, remixVersion, installDeps, useTypeScript, githubToken, debug, }: CreateAppArgs): Promise<void>;
+ export declare function validateNewProjectPath(input: string): Promise<void>;
+-export declare function validateTemplate(input: string): Promise<void>;
++export declare function validateTemplate(input: string, options?: {
++    githubToken: string | undefined;
++}): Promise<void>;
+ export declare type TemplateType = "template" | "example" | "repo" | "repoTemplate" | "remoteTarball" | "local";
+ export declare function detectTemplateType(template: string): TemplateType | null;
+ export {};
+diff --git a/node_modules/@remix-run/dev/cli/create.js b/node_modules/@remix-run/dev/dist/cli/create.js
+similarity index 77%
+rename from node_modules/@remix-run/dev/cli/create.js
+rename to node_modules/@remix-run/dev/dist/cli/create.js
+index 93e8f5b..47520be 100644
+--- a/node_modules/@remix-run/dev/cli/create.js
++++ b/node_modules/@remix-run/dev/dist/cli/create.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -28,6 +28,7 @@ var colors = require('../colors.js');
+ var packageJson = require('../package.json');
+ var convertToJavascript = require('./convert-to-javascript.js');
+ var getPreferredPackageManager = require('./getPreferredPackageManager.js');
++var invariant = require('../invariant.js');
+ 
+ function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+ 
+@@ -67,7 +68,7 @@ async function createApp({
+   remixVersion = remixDevPackageVersion,
+   installDeps,
+   useTypeScript = true,
+-  githubToken = process.env.GITHUB_TOKEN,
++  githubToken,
+   debug
+ }) {
+   /**
+@@ -267,13 +268,48 @@ async function downloadAndExtractTarball(projectDir, url, {
+   token,
+   filePath
+ }) {
+-  let response = await fetch__default["default"](url, token ? {
+-    headers: {
+-      Authorization: `token ${token}`
++  let resourceUrl = url;
++  let headers = {};
++
++  if (token && new URL(url).host.endsWith("github.com")) {
++    headers.Authorization = `token ${token}`;
++  }
++
++  if (isGithubReleaseAssetUrl(url)) {
++    var _body$assets, _body$assets$find;
++
++    // We can download the asset via the github api, but first we need to look up the
++    // asset id
++    let info = getGithubReleaseAssetInfo(url);
++    headers.Accept = "application/vnd.github.v3+json";
++    let response = await fetch__default["default"](`https://api.github.com/repos/${info.owner}/${info.name}/releases/tags/${info.tag}`, {
++      headers
++    });
++
++    if (response.status !== 200) {
++      throw Error("🚨 There was a problem fetching the file from GitHub. The request " + `responded with a ${response.status} status. Please try again later.`);
+     }
+-  } : {});
++
++    let body = await response.json();
++    let assetId = body === null || body === void 0 ? void 0 : (_body$assets = body.assets) === null || _body$assets === void 0 ? void 0 : (_body$assets$find = _body$assets.find(a => (a === null || a === void 0 ? void 0 : a.browser_download_url) === url)) === null || _body$assets$find === void 0 ? void 0 : _body$assets$find.id;
++
++    if (!assetId) {
++      throw Error("🚨 There was a problem fetching the file from GitHub. No asset was " + "found at that url. Please try again later.");
++    }
++
++    resourceUrl = `https://api.github.com/repos/${info.owner}/${info.name}/releases/assets/${assetId}`;
++    headers.Accept = "application/octet-stream";
++  }
++
++  let response = await fetch__default["default"](resourceUrl, {
++    headers
++  });
+ 
+   if (response.status !== 200) {
++    if (token) {
++      throw Error("🚨 There was a problem fetching the file from GitHub. The request " + `responded with a ${response.status} status. Perhaps your \`--token\`` + "is expired or invalid.");
++    }
++
+     throw Error("🚨 There was a problem fetching the file from GitHub. The request " + `responded with a ${response.status} status. Please try again later.`);
+   } // file paths returned from github are always unix style
+ 
+@@ -338,6 +374,23 @@ function getGithubUrl(info) {
+   return url;
+ }
+ 
++function isGithubReleaseAssetUrl(url) {
++  return url.startsWith("https://github.com") && url.includes("/releases/download/");
++}
++
++function getGithubReleaseAssetInfo(browserUrl) {
++  // for example, https://github.com/owner/repository/releases/download/v0.0.1/stack.tar.gz
++  let url = new URL(browserUrl);
++  let [, owner, name,,, tag, asset] = url.pathname.split("/");
++  return {
++    browserUrl,
++    owner,
++    name,
++    asset,
++    tag
++  };
++}
++
+ function getRepoInfo(validatedGithubUrl) {
+   if (isGithubRepoShorthand(validatedGithubUrl)) {
+     let [owner, name] = validatedGithubUrl.split("/");
+@@ -399,7 +452,7 @@ function isRemixTemplate(input) {
+   return ["arc", "cloudflare-pages", "cloudflare-workers", "deno", "express", "fly", "netlify", "remix", "vercel"].includes(input);
+ }
+ 
+-async function validateTemplate(input) {
++async function validateTemplate(input, options) {
+   // If a template string matches one of the choices in our interactive prompt,
+   // we can skip all fetching and manual validation.
+   if (isRemixStack(input)) {
+@@ -429,11 +482,26 @@ async function validateTemplate(input) {
+     case "remoteTarball":
+       {
+         let spinner = ora__default["default"]("Validating the template file…").start();
++        let apiUrl = input;
++        let method = "HEAD";
++        let headers = {};
++
++        if (isGithubReleaseAssetUrl(input)) {
++          let info = getGithubReleaseAssetInfo(input);
++          apiUrl = `https://api.github.com/repos/${info.owner}/${info.name}/releases/tags/${info.tag}`;
++          headers = {
++            Authorization: `token ${options === null || options === void 0 ? void 0 : options.githubToken}`,
++            Accept: "application/vnd.github.v3+json"
++          };
++          method = "GET";
++        }
++
+         let response;
+ 
+         try {
+-          response = await fetch__default["default"](input, {
+-            method: "HEAD"
++          response = await fetch__default["default"](apiUrl, {
++            method,
++            headers
+           });
+         } catch (_) {
+           throw Error("🚨 There was a problem verifying the template file. Please ensure " + "you are connected to the internet and try again later.");
+@@ -443,6 +511,16 @@ async function validateTemplate(input) {
+ 
+         switch (response.status) {
+           case 200:
++            if (isGithubReleaseAssetUrl(input)) {
++              var _body$assets2;
++
++              let body = await response.json();
++
++              if (!(body !== null && body !== void 0 && (_body$assets2 = body.assets) !== null && _body$assets2 !== void 0 && _body$assets2.some(a => (a === null || a === void 0 ? void 0 : a.browser_download_url) === input))) {
++                throw Error("🚨 The template file could not be verified. Please double check " + "the URL and try again.");
++              }
++            }
++
+             return;
+ 
+           case 404:
+@@ -457,14 +535,38 @@ async function validateTemplate(input) {
+       {
+         let spinner = ora__default["default"]("Validating the template repo…").start();
+         let {
+-          url,
+-          filePath
++          branch,
++          filePath,
++          owner,
++          name
+         } = getRepoInfo(input);
+         let response;
++        let apiUrl = `https://api.github.com/repos/${owner}/${name}`;
++        let method = "HEAD";
++
++        if (branch) {
++          apiUrl += `/git/trees/${branch}?recursive=1`;
++        }
++
++        if (filePath) {
++          // When filePath is present, we need to examine the response json to see
++          // if that path exists in the repo.
++          invariant["default"](branch, "Expecting branch to be present when specifying a path.");
++          method = "GET";
++        }
+ 
+         try {
+-          response = await fetch__default["default"](url, {
+-            method: "HEAD"
++          let headers = {};
++
++          if (options !== null && options !== void 0 && options.githubToken) {
++            headers = {
++              Authorization: `token ${options.githubToken}`
++            };
++          }
++
++          response = await fetch__default["default"](apiUrl, {
++            method,
++            headers
+           });
+         } catch (_) {
+           throw Error("🚨 There was a problem fetching the template. Please ensure you " + "are connected to the internet and try again later.");
+@@ -474,8 +576,23 @@ async function validateTemplate(input) {
+ 
+         switch (response.status) {
+           case 200:
++            if (filePath && filePath !== "/") {
++              var _filesWithinRepo$tree;
++
++              // if a filePath is included there must also be a branch, because of how github structures
++              // their URLs. That means the api results list all files and directories
++              let filesWithinRepo = await response.json();
++
++              if (!(filesWithinRepo !== null && filesWithinRepo !== void 0 && (_filesWithinRepo$tree = filesWithinRepo.tree) !== null && _filesWithinRepo$tree !== void 0 && _filesWithinRepo$tree.some(file => (file === null || file === void 0 ? void 0 : file.path) === filePath && (file === null || file === void 0 ? void 0 : file.type) === "tree"))) {
++                throw Error("🚨 The template could not be verified. The GitHub repository was found, but did " + "not seem to contain anything at that path. " + "Please double check that the filepath points to a directory in the repo " + "and try again.");
++              }
++            }
++
+             return;
+ 
++          case 401:
++            throw Error("🚨 The template could not be verified because you are not " + "authorized to access that repository. Please double check the " + "access rights of the repo or consider passing a `--token`");
++
+           case 403:
+             throw Error("🚨 The template could not be verified because you do not have " + "access to the repository. Please double check the access " + "rights of this repo and try again.");
+ 
+diff --git a/node_modules/@remix-run/dev/cli/getPreferredPackageManager.d.ts b/node_modules/@remix-run/dev/dist/cli/getPreferredPackageManager.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/getPreferredPackageManager.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/getPreferredPackageManager.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/getPreferredPackageManager.js b/node_modules/@remix-run/dev/dist/cli/getPreferredPackageManager.js
+similarity index 96%
+rename from node_modules/@remix-run/dev/cli/getPreferredPackageManager.js
+rename to node_modules/@remix-run/dev/dist/cli/getPreferredPackageManager.js
+index 482b0cc..2f27ef3 100644
+--- a/node_modules/@remix-run/dev/cli/getPreferredPackageManager.js
++++ b/node_modules/@remix-run/dev/dist/cli/getPreferredPackageManager.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/index.d.ts b/node_modules/@remix-run/dev/dist/cli/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/index.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/index.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/index.js b/node_modules/@remix-run/dev/dist/cli/index.js
+similarity index 93%
+rename from node_modules/@remix-run/dev/cli/index.js
+rename to node_modules/@remix-run/dev/dist/cli/index.js
+index 022fbd7..80b8189 100644
+--- a/node_modules/@remix-run/dev/cli/index.js
++++ b/node_modules/@remix-run/dev/dist/cli/index.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/flags.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/flags.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/flags.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/flags.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/index.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/index.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/jscodeshift.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/jscodeshift.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/jscodeshift.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/jscodeshift.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/jscodeshift.js b/node_modules/@remix-run/dev/dist/cli/migrate/jscodeshift.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/migrate/jscodeshift.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/jscodeshift.js
+index 29e626a..27c7d37 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/jscodeshift.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/jscodeshift.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/cleanupPackageJson.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/cleanupPackageJson.d.ts
+new file mode 100644
+index 0000000..5288f75
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/cleanupPackageJson.d.ts
+@@ -0,0 +1 @@
++export declare const cleanupPackageJson: (projectDir: string) => Promise<void>;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/cleanupPackageJson.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/cleanupPackageJson.js
+new file mode 100644
+index 0000000..e556dff
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/cleanupPackageJson.js
+@@ -0,0 +1,40 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++var NpmCliPackageJson = require('@npmcli/package-json');
++
++function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
++
++var NpmCliPackageJson__default = /*#__PURE__*/_interopDefaultLegacy(NpmCliPackageJson);
++
++const removeUnusedDevDependencies = (devDependencies = {}) => Object.fromEntries(Object.entries(devDependencies).filter(([name]) => !name.startsWith("@types/") && name !== "typescript"));
++
++const cleanupPackageJson = async projectDir => {
++  let packageJson = await NpmCliPackageJson__default["default"].load(projectDir);
++  let {
++    devDependencies,
++    scripts: {
++      typecheck,
++      ...scripts
++    } = {}
++  } = packageJson.content;
++  packageJson.update({
++    devDependencies: removeUnusedDevDependencies(devDependencies),
++    scripts
++  }); // write updates to package.json
++
++  return packageJson.save();
++};
++
++exports.cleanupPackageJson = cleanupPackageJson;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSConfigs.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSConfigs.d.ts
+new file mode 100644
+index 0000000..dc5acf3
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSConfigs.d.ts
+@@ -0,0 +1 @@
++export declare const convertTSConfigs: (projectDir: string) => void;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSConfigs.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSConfigs.js
+new file mode 100644
+index 0000000..b95930e
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSConfigs.js
+@@ -0,0 +1,61 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++var path = require('path');
++var glob = require('fast-glob');
++var fse = require('fs-extra');
++var JSON5 = require('json5');
++var prettier = require('prettier');
++
++function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
++
++var glob__default = /*#__PURE__*/_interopDefaultLegacy(glob);
++var JSON5__default = /*#__PURE__*/_interopDefaultLegacy(JSON5);
++var prettier__default = /*#__PURE__*/_interopDefaultLegacy(prettier);
++
++const convertTSConfigs = projectDir => {
++  let tsConfigPaths = glob__default["default"].sync("**/tsconfig.json", {
++    absolute: true,
++    cwd: projectDir,
++    ignore: ["**/node_modules/**"]
++  });
++  tsConfigPaths.forEach(tsConfigPath => {
++    let contents = fse.readFileSync(tsConfigPath, "utf8");
++    let tsConfigJson = JSON5__default["default"].parse(contents);
++    let newTSConfig = { ...tsConfigJson,
++      include: (tsConfigJson.include || []).map(include => {
++        if (include === "remix.env.d.ts") {
++          return null;
++        }
++
++        if (include === "**/*.ts") {
++          return "**/*.js";
++        }
++
++        if (include === "**/*.tsx") {
++          return "**/*.jsx";
++        }
++
++        return include;
++      }).filter(include => include !== null)
++    };
++    fse.writeFileSync(tsConfigPath, prettier__default["default"].format(JSON.stringify(newTSConfig, null, 2), {
++      parser: "json"
++    }), "utf8");
++    let dir = path.dirname(tsConfigPath);
++    fse.renameSync(tsConfigPath, path.join(dir, "jsconfig.json"));
++  });
++};
++
++exports.convertTSConfigs = convertTSConfigs;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/convertTSFileToJS.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/convertTSFileToJS.d.ts
+new file mode 100644
+index 0000000..bedb763
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/convertTSFileToJS.d.ts
+@@ -0,0 +1,7 @@
++declare type ConvertTSFileToJSArguments = {
++    filename: string;
++    projectDir: string;
++    source: string;
++};
++export declare const convertTSFileToJS: ({ filename, projectDir, source, }: ConvertTSFileToJSArguments) => string;
++export {};
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/convertTSFileToJS.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/convertTSFileToJS.js
+new file mode 100644
+index 0000000..1dc5a7a
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/convertTSFileToJS.js
+@@ -0,0 +1,75 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++var babel = require('@babel/core');
++var babelPluginSyntaxJSX = require('@babel/plugin-syntax-jsx');
++var babelPresetTypeScript = require('@babel/preset-typescript');
++var prettier = require('prettier');
++
++function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
++
++function _interopNamespace(e) {
++  if (e && e.__esModule) return e;
++  var n = Object.create(null);
++  if (e) {
++    Object.keys(e).forEach(function (k) {
++      if (k !== 'default') {
++        var d = Object.getOwnPropertyDescriptor(e, k);
++        Object.defineProperty(n, k, d.get ? d : {
++          enumerable: true,
++          get: function () { return e[k]; }
++        });
++      }
++    });
++  }
++  n["default"] = e;
++  return Object.freeze(n);
++}
++
++var babel__namespace = /*#__PURE__*/_interopNamespace(babel);
++var babelPluginSyntaxJSX__default = /*#__PURE__*/_interopDefaultLegacy(babelPluginSyntaxJSX);
++var babelPresetTypeScript__default = /*#__PURE__*/_interopDefaultLegacy(babelPresetTypeScript);
++var prettier__default = /*#__PURE__*/_interopDefaultLegacy(prettier);
++
++const convertTSFileToJS = ({
++  filename,
++  projectDir,
++  source
++}) => {
++  let result = babel__namespace.transformSync(source, {
++    compact: false,
++    cwd: projectDir,
++    filename,
++    plugins: [babelPluginSyntaxJSX__default["default"]],
++    presets: [[babelPresetTypeScript__default["default"], {
++      jsx: "preserve"
++    }]],
++    retainLines: true
++  });
++
++  if (!result || !result.code) {
++    throw new Error("Could not parse TypeScript");
++  }
++  /**
++   * Babel's `compact` and `retainLines` options are both bad at formatting code.
++   * Use Prettier for nicer formatting.
++   */
++
++
++  return prettier__default["default"].format(result.code, {
++    parser: "babel"
++  });
++};
++
++exports.convertTSFileToJS = convertTSFileToJS;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/index.d.ts
+new file mode 100644
+index 0000000..60a2f1b
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/index.d.ts
+@@ -0,0 +1 @@
++export declare const convertTSFilesToJS: (projectDir: string) => void;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/index.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/index.js
+new file mode 100644
+index 0000000..818a0d3
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/convertTSFilesToJS/index.js
+@@ -0,0 +1,47 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++var path = require('path');
++var glob = require('fast-glob');
++var fse = require('fs-extra');
++var convertTSFileToJS = require('./convertTSFileToJS.js');
++
++function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
++
++var glob__default = /*#__PURE__*/_interopDefaultLegacy(glob);
++
++const convertTSFilesToJS = projectDir => {
++  let entries = glob__default["default"].sync("**/*.+(ts|tsx)", {
++    cwd: projectDir,
++    absolute: true,
++    ignore: ["**/node_modules/**"]
++  });
++  entries.forEach(entry => {
++    if (entry.endsWith(".d.ts")) {
++      return fse.removeSync(entry);
++    }
++
++    let contents = fse.readFileSync(entry, "utf8");
++    let filename = path.basename(entry);
++    let javascript = convertTSFileToJS.convertTSFileToJS({
++      filename,
++      projectDir,
++      source: contents
++    });
++    fse.writeFileSync(entry, javascript, "utf8");
++    fse.renameSync(entry, entry.replace(".ts", ".js"));
++  });
++};
++
++exports.convertTSFilesToJS = convertTSFilesToJS;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/index.d.ts
+new file mode 100644
+index 0000000..e28e091
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/index.d.ts
+@@ -0,0 +1,2 @@
++import type { MigrationFunction } from "../../types";
++export declare const convertToJavaScript: MigrationFunction;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/index.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/index.js
+new file mode 100644
+index 0000000..e8540df
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/index.js
+@@ -0,0 +1,65 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++var path = require('path');
++var glob = require('fast-glob');
++var config = require('../../../../config.js');
++var jscodeshift = require('../../jscodeshift.js');
++var cleanupPackageJson = require('./cleanupPackageJson.js');
++var convertTSConfigs = require('./convertTSConfigs.js');
++var index = require('./convertTSFilesToJS/index.js');
++
++function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
++
++var glob__default = /*#__PURE__*/_interopDefaultLegacy(glob);
++
++const TRANSFORM_PATH = path.join(__dirname, "transform");
++const convertToJavaScript = async ({
++  flags,
++  projectDir
++}) => {
++  let config$1 = await config.readConfig(projectDir); // 1. Rename all tsconfig.json files to jsconfig.json
++
++  convertTSConfigs.convertTSConfigs(config$1.rootDirectory); // 2. Remove @types/* & TypeScript dependencies + typecheck script from package.json
++
++  await cleanupPackageJson.cleanupPackageJson(config$1.rootDirectory); // 3. Run codemod
++
++  let files = glob__default["default"].sync("**/*.+(ts|tsx)", {
++    absolute: true,
++    cwd: config$1.rootDirectory,
++    ignore: [`./${config$1.appDirectory}/**/*`, "**/node_modules/**"]
++  });
++  let codemodOk = await jscodeshift.run({
++    files,
++    flags,
++    transformPath: TRANSFORM_PATH
++  });
++
++  if (!codemodOk) {
++    console.error("❌ I couldn't update your imports to JS.");
++
++    if (!flags.debug) {
++      console.log("👉 Try again with the `--debug` flag to see what failed.");
++    }
++
++    process.exit(1);
++  } // 4. Convert all .ts files to .js
++
++
++  index.convertTSFilesToJS(config$1.rootDirectory);
++  console.log("✅ Your JavaScript looks good!");
++  console.log("\n🚚 I've successfully migrated your project! 🎉");
++};
++
++exports.convertToJavaScript = convertToJavaScript;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/checkNoDifferentImportTypesCombined.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/checkNoDifferentImportTypesCombined.d.ts
+new file mode 100644
+index 0000000..1ff2436
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/checkNoDifferentImportTypesCombined.d.ts
+@@ -0,0 +1,2 @@
++import type { ImportDeclaration } from "jscodeshift";
++export declare const checkNoDifferentImportTypesCombined: ({ source, specifiers, }: ImportDeclaration) => void;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/checkNoDifferentImportTypesCombined.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/checkNoDifferentImportTypesCombined.js
+new file mode 100644
+index 0000000..98075a2
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/checkNoDifferentImportTypesCombined.js
+@@ -0,0 +1,28 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++const checkNoDifferentImportTypesCombined = ({
++  source,
++  specifiers
++}) => {
++  let specifierTypes = (specifiers || []).map(({
++    type
++  }) => type);
++
++  if (specifierTypes.filter(type => type === specifierTypes[0]).length !== specifierTypes.length) {
++    throw Error(`You shouldn't use different types of imports together in the same statement for ${source.value}. Please break them into multiple import statements and try again.`);
++  }
++};
++
++exports.checkNoDifferentImportTypesCombined = checkNoDifferentImportTypesCombined;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createExpressionStatement.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createExpressionStatement.d.ts
+new file mode 100644
+index 0000000..85c0ae0
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createExpressionStatement.d.ts
+@@ -0,0 +1,2 @@
++import type { ImportDeclaration, JSCodeshift } from "jscodeshift";
++export declare const createExpressionStatement: (j: JSCodeshift, { source }: ImportDeclaration) => import("ast-types").namedTypes.ExpressionStatement;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createExpressionStatement.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createExpressionStatement.js
+new file mode 100644
+index 0000000..3bd0b43
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createExpressionStatement.js
+@@ -0,0 +1,22 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++const createExpressionStatement = (j, {
++  source
++}) => {
++  let callExpression = j.callExpression(j.identifier("require"), [source]);
++  return j.expressionStatement(callExpression);
++};
++
++exports.createExpressionStatement = createExpressionStatement;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationIdentifier.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationIdentifier.d.ts
+new file mode 100644
+index 0000000..fed2831
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationIdentifier.d.ts
+@@ -0,0 +1,2 @@
++import type { ImportDeclaration, JSCodeshift } from "jscodeshift";
++export declare const createVariableDeclarationIdentifier: (j: JSCodeshift, { source, specifiers }: ImportDeclaration) => import("ast-types").namedTypes.VariableDeclaration;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationIdentifier.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationIdentifier.js
+new file mode 100644
+index 0000000..85dff78
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationIdentifier.js
+@@ -0,0 +1,33 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++const createVariableDeclarationIdentifier = (j, {
++  source,
++  specifiers
++}) => {
++  var _flatMap$0$local;
++
++  let callExpression = j.callExpression(j.identifier("require"), [source]);
++  return j.variableDeclaration("const", [j.variableDeclarator(j.identifier(((_flatMap$0$local = (specifiers || []
++  /**
++   * HACK: Can't use casts nor type guards in a `jscodeshift` transform
++   * https://github.com/facebook/jscodeshift/issues/467
++   *
++   * So to narrow specifier type, we use `flatMap` instead.
++   * (`filter` can't narrow type without type guards)
++   */
++  ).flatMap(specifier => specifier.type === "ImportDefaultSpecifier" || specifier.type === "ImportNamespaceSpecifier" ? specifier : [])[0].local) === null || _flatMap$0$local === void 0 ? void 0 : _flatMap$0$local.name) || ""), callExpression)]);
++};
++
++exports.createVariableDeclarationIdentifier = createVariableDeclarationIdentifier;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationObjectPattern.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationObjectPattern.d.ts
+new file mode 100644
+index 0000000..388846b
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationObjectPattern.d.ts
+@@ -0,0 +1,2 @@
++import type { ImportDeclaration, JSCodeshift } from "jscodeshift";
++export declare const createVariableDeclarationObjectPattern: (j: JSCodeshift, { source, specifiers }: ImportDeclaration) => import("ast-types").namedTypes.VariableDeclaration;
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationObjectPattern.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationObjectPattern.js
+new file mode 100644
+index 0000000..0d3f2f8
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/createVariableDeclarationObjectPattern.js
+@@ -0,0 +1,41 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++const createVariableDeclarationObjectPattern = (j, {
++  source,
++  specifiers
++}) => {
++  let callExpression = j.callExpression(j.identifier("require"), [source]);
++  return j.variableDeclaration("const", [j.variableDeclarator(j.objectPattern((specifiers || []
++  /**
++   * HACK: Can't use casts nor type guards in a `jscodeshift` transform
++   * https://github.com/facebook/jscodeshift/issues/467
++   *
++   * So to narrow specifier type, we use `flatMap` instead.
++   * (`filter` can't narrow type without type guards)
++   */
++  ).flatMap(specifier => specifier.type === "ImportSpecifier" ? specifier : []).map(({
++    imported: {
++      name
++    },
++    local
++  }) => j.property.from({
++    key: j.identifier(name),
++    kind: "init",
++    value: j.identifier((local === null || local === void 0 ? void 0 : local.name) || name),
++    shorthand: true
++  }))), callExpression)]);
++};
++
++exports.createVariableDeclarationObjectPattern = createVariableDeclarationObjectPattern;
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/index.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/index.d.ts
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/index.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/index.js
+new file mode 100644
+index 0000000..5f71966
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/convert-to-javascript/transform/index.js
+@@ -0,0 +1,65 @@
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++var checkNoDifferentImportTypesCombined = require('./checkNoDifferentImportTypesCombined.js');
++var createExpressionStatement = require('./createExpressionStatement.js');
++var createVariableDeclarationIdentifier = require('./createVariableDeclarationIdentifier.js');
++var createVariableDeclarationObjectPattern = require('./createVariableDeclarationObjectPattern.js');
++
++const transform = (file, api, options) => {
++  let j = api.jscodeshift;
++  let root = j(file.source);
++  let allESImportDeclarations = root.find(j.ImportDeclaration);
++
++  if (allESImportDeclarations.length === 0) {
++    // This transform doesn't need to run if there are no ES imports
++    return null;
++  } // https://github.com/facebook/jscodeshift/blob/main/recipes/retain-first-comment.md
++
++
++  let getFirstNode = () => root.find(j.Program).get("body", 0).node;
++
++  let oldFirstNode = getFirstNode();
++  allESImportDeclarations.forEach(importDeclaration => {
++    if (importDeclaration.node.importKind === "type") {
++      return;
++    }
++
++    let {
++      specifiers
++    } = importDeclaration.node;
++
++    if (!specifiers || specifiers.length === 0) {
++      return j(importDeclaration).replaceWith(createExpressionStatement.createExpressionStatement(j, importDeclaration.node));
++    }
++
++    checkNoDifferentImportTypesCombined.checkNoDifferentImportTypesCombined(importDeclaration.node);
++
++    if (["ImportDefaultSpecifier", "ImportNamespaceSpecifier"].includes(specifiers[0].type)) {
++      return j(importDeclaration).replaceWith(createVariableDeclarationIdentifier.createVariableDeclarationIdentifier(j, importDeclaration.node));
++    }
++
++    return j(importDeclaration).replaceWith(createVariableDeclarationObjectPattern.createVariableDeclarationObjectPattern(j, importDeclaration.node));
++  }); // If the first node has been modified or deleted, reattach the comments
++
++  let newFirstNode = getFirstNode();
++
++  if (newFirstNode !== oldFirstNode) {
++    newFirstNode.comments = oldFirstNode.comments;
++  }
++
++  return root.toSource(options);
++};
++
++exports["default"] = transform;
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/index.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/index.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/index.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/index.js
+similarity index 58%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/index.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/index.js
+index 1926a38..c90e4d4 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/index.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/index.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -12,12 +12,17 @@
+ 
+ Object.defineProperty(exports, '__esModule', { value: true });
+ 
+-var index = require('./replace-remix-imports/index.js');
++var index = require('./convert-to-javascript/index.js');
++var index$1 = require('./replace-remix-imports/index.js');
+ 
+ const migrations = [{
++  id: "convert-to-javascript",
++  description: "Converts your TS project to a JS project",
++  function: index.convertToJavaScript
++}, {
+   id: "replace-remix-imports",
+   description: "Replaces `remix` imports with `@remix-run/*` imports",
+-  function: index.replaceRemixImports
++  function: index$1.replaceRemixImports
+ }];
+ 
+ exports.migrations = migrations;
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/dependency.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/dependency.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/dependency.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/dependency.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/dependency.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/dependency.js
+similarity index 96%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/dependency.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/dependency.js
+index 30b871a..bc30ff5 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/dependency.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/dependency.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/index.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/index.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/index.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/index.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/index.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/index.js
+index 34c57a4..78a1518 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/index.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/index.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/messages.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/messages.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/messages.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/messages.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/messages.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/messages.js
+similarity index 95%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/messages.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/messages.js
+index 7c2a481..caad094 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/messages.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/messages.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/remixSetup.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/remixSetup.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/remixSetup.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/remixSetup.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/remixSetup.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/remixSetup.js
+similarity index 96%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/remixSetup.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/remixSetup.js
+index bd42468..2a5b728 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/remixSetup.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/remixSetup.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.js
+index fe09fbb..6901208 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/resolveTransformOptions.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/adapter.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/adapter.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/adapter.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/adapter.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/adapter.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/adapter.js
+similarity index 96%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/adapter.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/adapter.js
+index 2097dae..29e3438 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/adapter.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/adapter.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.js
+index f95a33d..46c2f2f 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getNewImportDeclarations.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.js
+index 543e072..76921a3 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/getRemixImports.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/index.d.ts
+new file mode 100644
+index 0000000..16010ee
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/index.d.ts
+@@ -0,0 +1,3 @@
++import type { Transform } from "jscodeshift";
++declare const transform: Transform;
++export default transform;
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/index.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/index.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/index.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/index.js
+index 82a2184..42d4d5c 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/index.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/index.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.js
+index 60f6925..12df851 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/index.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.js
+index 9a4ea15..9d2c24f 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/mapNormalizedImports/packageExports.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.js
+similarity index 97%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.js
+index 399eb05..f0525f1 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/normalizeImports.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/options.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/options.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/options.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/options.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/runtime.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/runtime.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/runtime.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/runtime.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/runtime.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/runtime.js
+similarity index 96%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/runtime.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/runtime.js
+index fd02986..ca50d92 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/replace-remix-imports/transform/runtime.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/replace-remix-imports/transform/runtime.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/transforms.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/transforms.d.ts
+similarity index 50%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/transforms.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/transforms.d.ts
+index 2dc26dc..63c8c23 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/transforms.d.ts
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/transforms.d.ts
+@@ -1 +1,2 @@
++export * as ConvertToJavaScriptTransform from "./convert-to-javascript/transform";
+ export * as ReplaceRemixImportsTransform from "./replace-remix-imports/transform";
+diff --git a/node_modules/@remix-run/dev/cli/migrate/migrations/transforms.js b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/transforms.js
+similarity index 52%
+rename from node_modules/@remix-run/dev/cli/migrate/migrations/transforms.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/migrations/transforms.js
+index 6c5c170..f24f976 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/migrations/transforms.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/migrations/transforms.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -12,8 +12,10 @@
+ 
+ Object.defineProperty(exports, '__esModule', { value: true });
+ 
+-var index = require('./replace-remix-imports/transform/index.js');
++var index = require('./convert-to-javascript/transform/index.js');
++var index$1 = require('./replace-remix-imports/transform/index.js');
+ 
+ 
+ 
+-exports.ReplaceRemixImportsTransform = index;
++exports.ConvertToJavaScriptTransform = index;
++exports.ReplaceRemixImportsTransform = index$1;
+diff --git a/node_modules/@remix-run/dev/cli/migrate/resolveInput.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/resolveInput.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/resolveInput.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/resolveInput.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/resolveInput.js b/node_modules/@remix-run/dev/dist/cli/migrate/resolveInput.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/migrate/resolveInput.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/resolveInput.js
+index be0b785..d3837eb 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/resolveInput.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/resolveInput.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/run.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/run.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/run.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/run.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/migrate/run.js b/node_modules/@remix-run/dev/dist/cli/migrate/run.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/cli/migrate/run.js
+rename to node_modules/@remix-run/dev/dist/cli/migrate/run.js
+index 00f7af5..a5afab0 100644
+--- a/node_modules/@remix-run/dev/cli/migrate/run.js
++++ b/node_modules/@remix-run/dev/dist/cli/migrate/run.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/cli/migrate/types.d.ts b/node_modules/@remix-run/dev/dist/cli/migrate/types.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/migrate/types.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/migrate/types.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/run.d.ts b/node_modules/@remix-run/dev/dist/cli/run.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/run.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/run.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/run.js b/node_modules/@remix-run/dev/dist/cli/run.js
+similarity index 63%
+rename from node_modules/@remix-run/dev/cli/run.js
+rename to node_modules/@remix-run/dev/dist/cli/run.js
+index e7f566a..1362eb7 100644
+--- a/node_modules/@remix-run/dev/cli/run.js
++++ b/node_modules/@remix-run/dev/dist/cli/run.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -14,8 +14,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
+ 
+ var path = require('path');
+ var os = require('os');
++var arg = require('arg');
+ var inspector = require('inspector');
+-var meow = require('meow');
+ var inquirer = require('inquirer');
+ var semver = require('semver');
+ var fse = require('fs-extra');
+@@ -48,8 +48,8 @@ function _interopNamespace(e) {
+ 
+ var path__namespace = /*#__PURE__*/_interopNamespace(path);
+ var os__default = /*#__PURE__*/_interopDefaultLegacy(os);
++var arg__default = /*#__PURE__*/_interopDefaultLegacy(arg);
+ var inspector__default = /*#__PURE__*/_interopDefaultLegacy(inspector);
+-var meow__default = /*#__PURE__*/_interopDefaultLegacy(meow);
+ var inquirer__default = /*#__PURE__*/_interopDefaultLegacy(inquirer);
+ var semver__default = /*#__PURE__*/_interopDefaultLegacy(semver);
+ var fse__default = /*#__PURE__*/_interopDefaultLegacy(fse);
+@@ -57,91 +57,92 @@ var fse__default = /*#__PURE__*/_interopDefaultLegacy(fse);
+ const helpText = `
+ ${colors.logoBlue("R")} ${colors.logoGreen("E")} ${colors.logoYellow("M")} ${colors.logoPink("I")} ${colors.logoRed("X")}
+ 
+-${colors.heading("Usage")}:
+-  $ remix create <${colors.arg("projectDir")}> --template <${colors.arg("template")}>
+-  $ remix init [${colors.arg("projectDir")}]
+-  $ remix build [${colors.arg("projectDir")}]
+-  $ remix dev [${colors.arg("projectDir")}]
+-  $ remix routes [${colors.arg("projectDir")}]
+-  $ remix setup [${colors.arg("remixPlatform")}]
+-  $ remix migrate [-m ${colors.arg("migration")}] [${colors.arg("projectDir")}]
+-
+-${colors.heading("Options")}:
+-  --help, -h          Print this help message and exit
+-  --version, -v       Print the CLI version and exit
+-  --no-color          Disable ANSI colors in console output
+-\`create\` Options:
+-  --template          The template to use
+-  --no-install        Skip installing dependencies after creation
+-  --no-typescript     Convert the template to JavaScript
+-  --remix-version     The version of Remix to use
+-\`build\` Options:
+-  --sourcemap         Generate source maps for production
+-\`dev\` Options:
+-  --debug             Attach Node.js inspector
+-  --port, -p          Choose the port from which to run your app
+-\`routes\` Options:
+-  --json              Print the routes as JSON
+-\`migrate\` Options:
+-  --debug             Show debugging logs
+-  --dry               Dry run (no changes are made to files)
+-  --force             Bypass Git safety checks and forcibly run migration
+-  --migration, -m     Name of the migration to run
+-
+-${colors.heading("Values")}:
+-  - ${colors.arg("projectDir")}        The Remix project directory
+-  - ${colors.arg("template")}          The project template to use
+-  - ${colors.arg("remixPlatform")}     \`node\` or \`cloudflare\`
+-  - ${colors.arg("migration")}         One of the choices from https://github.com/remix-run/remix/tree/main/packages/remix-dev/cli/migrate/migration-options
+-
+-${colors.heading("Creating a new project")}:
+-
+-  Remix projects are created from templates. A template can be:
+-
+-  - a file path to a directory of files
+-  - a file path to a tarball
+-  - the name of a :username/:repo on GitHub
+-  - the URL of a tarball
+-
+-  $ remix create my-app --template /path/to/remix-template
+-  $ remix create my-app --template /path/to/remix-template.tar.gz
+-  $ remix create my-app --template remix-run/grunge-stack
+-  $ remix create my-app --template :username/:repo
+-  $ remix create my-app --template https://github.com/:username/:repo
+-  $ remix create my-app --template https://github.com/:username/:repo/tree/:branch
+-  $ remix create my-app --template https://github.com/:username/:repo/archive/refs/tags/:tag.tar.gz
+-  $ remix create my-app --template https://example.com/remix-template.tar.gz
+-
+-  To create a new project from a template in a private GitHub repo,
+-  set the \`GITHUB_TOKEN\` environment variable to a personal access
+-  token with access to that repo.
+-
+-${colors.heading("Initialize a project:")}:
+-
+-  Remix project templates may contain a \`remix.init\` directory
+-  with a script that initializes the project. This script automatically
+-  runs during \`remix create\`, but if you ever need to run it manually
+-  (e.g. to test it out) you can:
+-
+-  $ remix init
+-
+-${colors.heading("Build your project")}:
+-
+-  $ remix build
+-  $ remix build --sourcemap
+-  $ remix build my-app
+-
+-${colors.heading("Run your project locally in development")}:
+-
+-  $ remix dev
+-  $ remix dev my-app
+-  $ remix dev --debug
+-
+-${colors.heading("Show all routes in your app")}:
+-
+-  $ remix routes
+-  $ remix routes my-app
+-  $ remix routes --json
++  ${colors.heading("Usage")}:
++    $ remix create <${colors.arg("projectDir")}> --template <${colors.arg("template")}>
++    $ remix init [${colors.arg("projectDir")}]
++    $ remix build [${colors.arg("projectDir")}]
++    $ remix dev [${colors.arg("projectDir")}]
++    $ remix routes [${colors.arg("projectDir")}]
++    $ remix setup [${colors.arg("remixPlatform")}]
++    $ remix migrate [-m ${colors.arg("migration")}] [${colors.arg("projectDir")}]
++
++  ${colors.heading("Options")}:
++    --help, -h          Print this help message and exit
++    --version, -v       Print the CLI version and exit
++    --no-color          Disable ANSI colors in console output
++  \`create\` Options:
++    --template          The template to use
++    --no-install        Skip installing dependencies after creation
++    --no-typescript     Convert the template to JavaScript
++    --remix-version     The version of Remix to use
++  \`build\` Options:
++    --sourcemap         Generate source maps for production
++  \`dev\` Options:
++    --debug             Attach Node.js inspector
++    --port, -p          Choose the port from which to run your app
++  \`init\` Options:
++    --no-delete         Skip deleting the \`remix.init\` script
++  \`routes\` Options:
++    --json              Print the routes as JSON
++  \`migrate\` Options:
++    --debug             Show debugging logs
++    --dry               Dry run (no changes are made to files)
++    --force             Bypass Git safety checks and forcibly run migration
++    --migration, -m     Name of the migration to run
++
++  ${colors.heading("Values")}:
++    - ${colors.arg("projectDir")}        The Remix project directory
++    - ${colors.arg("template")}          The project template to use
++    - ${colors.arg("remixPlatform")}     \`node\` or \`cloudflare\`
++    - ${colors.arg("migration")}         One of the choices from https://github.com/remix-run/remix/blob/main/packages/remix-dev/cli/migrate/migrations/index.ts
++
++  ${colors.heading("Creating a new project")}:
++
++    Remix projects are created from templates. A template can be:
++
++    - a file path to a directory of files
++    - a file path to a tarball
++    - the name of a :username/:repo on GitHub
++    - the URL of a tarball
++
++    $ remix create my-app --template /path/to/remix-template
++    $ remix create my-app --template /path/to/remix-template.tar.gz
++    $ remix create my-app --template remix-run/grunge-stack
++    $ remix create my-app --template :username/:repo
++    $ remix create my-app --template https://github.com/:username/:repo
++    $ remix create my-app --template https://github.com/:username/:repo/tree/:branch
++    $ remix create my-app --template https://github.com/:username/:repo/archive/refs/tags/:tag.tar.gz
++    $ remix create my-app --template https://example.com/remix-template.tar.gz
++
++    To create a new project from a template in a private GitHub repo,
++    pass the \`token\` flag with a personal access token with access to that repo.
++
++  ${colors.heading("Initialize a project:")}:
++
++    Remix project templates may contain a \`remix.init\` directory
++    with a script that initializes the project. This script automatically
++    runs during \`remix create\`, but if you ever need to run it manually
++    (e.g. to test it out) you can:
++
++    $ remix init
++
++  ${colors.heading("Build your project")}:
++
++    $ remix build
++    $ remix build --sourcemap
++    $ remix build my-app
++
++  ${colors.heading("Run your project locally in development")}:
++
++    $ remix dev
++    $ remix dev my-app
++    $ remix dev --debug
++
++  ${colors.heading("Show all routes in your app")}:
++
++    $ remix routes
++    $ remix routes my-app
++    $ remix routes --json
+ `;
+ const templateChoices = [{
+   name: "Remix App Server",
+@@ -196,68 +197,65 @@ async function run(argv = process.argv.slice(2)) {
+     throw new Error(`️🚨 Oops, Node v${versions.node} detected. Remix requires a Node version greater than 14.`);
+   }
+ 
+-  let {
+-    flags,
+-    input,
+-    showHelp,
+-    showVersion
+-  } = meow__default["default"](helpText, {
+-    argv,
+-    booleanDefault: undefined,
+-    description: false,
+-    flags: {
+-      debug: {
+-        type: "boolean"
+-      },
+-      dry: {
+-        type: "boolean"
+-      },
+-      force: {
+-        type: "boolean"
+-      },
+-      help: {
+-        type: "boolean",
+-        alias: "h"
+-      },
+-      install: {
+-        type: "boolean"
+-      },
+-      json: {
+-        type: "boolean"
+-      },
+-      migration: {
+-        type: "string",
+-        alias: "m"
+-      },
+-      port: {
+-        type: "number",
+-        alias: "p"
+-      },
+-      remixVersion: {
+-        type: "string"
+-      },
+-      sourcemap: {
+-        type: "boolean"
+-      },
+-      template: {
+-        type: "string"
+-      },
+-      typescript: {
+-        type: "boolean"
+-      },
+-      version: {
+-        type: "boolean",
+-        alias: "v"
+-      }
+-    }
++  let args = arg__default["default"]({
++    "--debug": Boolean,
++    "--no-delete": Boolean,
++    "--dry": Boolean,
++    "--force": Boolean,
++    "--help": Boolean,
++    "-h": "--help",
++    "--install": Boolean,
++    "--no-install": Boolean,
++    "--json": Boolean,
++    "--migration": String,
++    "-m": "--migration",
++    "--remix-version": String,
++    "--sourcemap": Boolean,
++    "--template": String,
++    "--token": String,
++    "--typescript": Boolean,
++    "--no-typescript": Boolean,
++    "--version": Boolean,
++    "-v": "--version"
++  }, {
++    argv
+   });
+-  if (flags.help) showHelp();
+-  if (flags.version) showVersion();
++  let input = args._;
++  let flags = Object.entries(args).reduce((acc, [key, value]) => {
++    key = key.replace(/^--/, "");
++    acc[key] = value;
++    return acc;
++  }, {});
++
++  if (flags.help) {
++    console.log(helpText);
++    return;
++  }
++
++  if (flags.version) {
++    let version = require("../package.json").version;
++
++    console.log(version);
++    return;
++  }
++
++  if (args["--no-delete"]) {
++    flags.delete = false;
++  }
++
++  if (args["--no-install"]) {
++    flags.install = false;
++  }
++
++  if (args["--no-typescript"]) {
++    flags.typescript = false;
++  }
+ 
+   if (flags.template === "typescript" || flags.template === "ts") {
+     flags.template = "remix-ts";
+   }
+ 
++  flags.remixVersion = args["--remix-version"];
+   let command = input[0]; // Note: Keep each case in this switch statement small.
+ 
+   switch (command) {
+@@ -271,8 +269,23 @@ async function run(argv = process.argv.slice(2)) {
+         // as possible, but inquirer will allow users to retry input rather than
+         // stop the process.
+ 
++        let {
++          template,
++          token: githubToken,
++          install,
++          typescript,
++          remixVersion,
++          debug
++        } = flags;
++
++        if (template === "typescript" || template === "ts") {
++          template = "remix-ts";
++        }
++
+         if (flags.template) {
+-          await create.validateTemplate(flags.template);
++          await create.validateTemplate(flags.template, {
++            githubToken
++          });
+         }
+ 
+         if (projectPath) {
+@@ -308,7 +321,7 @@ async function run(argv = process.argv.slice(2)) {
+           return path__namespace.resolve(process.cwd(), inputDir);
+         }).catch(error => {
+           if (error.isTtyError) {
+-            showHelp();
++            console.log(helpText);
+             return;
+           }
+ 
+@@ -316,7 +329,7 @@ async function run(argv = process.argv.slice(2)) {
+         });
+ 
+         if (!projectDir) {
+-          showHelp();
++          console.log(helpText);
+           return;
+         }
+ 
+@@ -328,7 +341,7 @@ async function run(argv = process.argv.slice(2)) {
+           default: "template",
+ 
+           when() {
+-            return flags.template === undefined;
++            return template === undefined;
+           },
+ 
+           choices: [{
+@@ -377,7 +390,7 @@ async function run(argv = process.argv.slice(2)) {
+           default: true,
+ 
+           when() {
+-            return flags.typescript === undefined;
++            return typescript === undefined;
+           },
+ 
+           choices: [{
+@@ -393,7 +406,7 @@ async function run(argv = process.argv.slice(2)) {
+           message: `Do you want me to run \`${packageManager} install\`?`,
+ 
+           when() {
+-            return flags.install === undefined;
++            return install === undefined;
+           },
+ 
+           default: true
+@@ -410,16 +423,16 @@ async function run(argv = process.argv.slice(2)) {
+ 
+           throw error;
+         });
+-        let installDeps = flags.install !== false && answers.install !== false;
+-        let useTypeScript = flags.typescript ?? answers.useTypeScript;
++        let installDeps = install !== false && answers.install !== false;
++        let useTypeScript = typescript ?? answers.useTypeScript;
+         await commands.create({
+-          appTemplate: flags.template || answers.appTemplate,
++          appTemplate: template || answers.appTemplate,
+           projectDir,
+-          remixVersion: flags.remixVersion,
++          remixVersion: remixVersion,
+           installDeps,
+           useTypeScript,
+-          githubToken: process.env.GITHUB_TOKEN,
+-          debug: flags.debug
++          githubToken,
++          debug
+         });
+         let initScriptDir = path__namespace.join(projectDir, "remix.init");
+         let hasInitScript = await fse__default["default"].pathExists(initScriptDir);
+@@ -427,8 +440,9 @@ async function run(argv = process.argv.slice(2)) {
+         if (hasInitScript) {
+           if (installDeps) {
+             console.log("💿 Running remix.init script");
+-            await commands.init(projectDir);
+-            await fse__default["default"].remove(initScriptDir);
++            await commands.init(projectDir, {
++              deleteScript: true
++            });
+           } else {
+             console.log();
+             console.log(colors.warning("💿 You've opted out of installing dependencies so we won't run the " + path__namespace.join("remix.init", "index.js") + " script for you just yet. Once you've installed " + `dependencies, you can run it manually with \`${npxInterop[packageManager]} remix init\``));
+@@ -449,7 +463,9 @@ async function run(argv = process.argv.slice(2)) {
+       }
+ 
+     case "init":
+-      await commands.init(input[1] || process.env.REMIX_ROOT || process.cwd());
++      await commands.init(input[1] || process.env.REMIX_ROOT || process.cwd(), {
++        deleteScript: flags.delete
++      });
+       break;
+ 
+     case "routes":
+diff --git a/node_modules/@remix-run/dev/cli/setup.d.ts b/node_modules/@remix-run/dev/dist/cli/setup.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/cli/setup.d.ts
+rename to node_modules/@remix-run/dev/dist/cli/setup.d.ts
+diff --git a/node_modules/@remix-run/dev/cli/setup.js b/node_modules/@remix-run/dev/dist/cli/setup.js
+similarity index 94%
+rename from node_modules/@remix-run/dev/cli/setup.js
+rename to node_modules/@remix-run/dev/dist/cli/setup.js
+index 9f11954..1604342 100644
+--- a/node_modules/@remix-run/dev/cli/setup.js
++++ b/node_modules/@remix-run/dev/dist/cli/setup.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -77,15 +77,15 @@ async function setupRemix(platform) {
+   }); // Copy magicExports directories to remix
+ 
+   let remixPkgDir = path__namespace.dirname(remixPkgJsonFile);
+-  let platformExportsDir = path__namespace.resolve(platformPkgJsonFile, "..", "magicExports");
+-  let serverExportsDir = path__namespace.resolve(serverPkgJsonFile, "..", "magicExports");
+-  let clientExportsDir = path__namespace.resolve(clientPkgJsonFile, "..", "magicExports");
++  let platformExportsDir = path__namespace.resolve(platformPkgJsonFile, "..", "dist", "magicExports");
++  let serverExportsDir = path__namespace.resolve(serverPkgJsonFile, "..", "dist", "magicExports");
++  let clientExportsDir = path__namespace.resolve(clientPkgJsonFile, "..", "dist", "magicExports");
+   let magicTypes = await combineFilesInDirs([platformExportsDir, serverExportsDir, clientExportsDir], ".d.ts");
+   let magicCJS = await combineFilesInDirs([platformExportsDir, serverExportsDir, clientExportsDir], ".js");
+   let magicESM = await combineFilesInDirs([path__namespace.join(platformExportsDir, "esm"), path__namespace.join(serverExportsDir, "esm"), path__namespace.join(clientExportsDir, "esm")], ".js");
+-  await fse__namespace.writeFile(path__namespace.join(remixPkgDir, "index.d.ts"), magicTypes);
+-  await fse__namespace.writeFile(path__namespace.join(remixPkgDir, "index.js"), magicCJS);
+-  await fse__namespace.writeFile(path__namespace.join(remixPkgDir, "esm/index.js"), magicESM);
++  await fse__namespace.writeFile(path__namespace.join(remixPkgDir, "dist", "index.d.ts"), magicTypes);
++  await fse__namespace.writeFile(path__namespace.join(remixPkgDir, "dist", "index.js"), magicCJS);
++  await fse__namespace.writeFile(path__namespace.join(remixPkgDir, "dist", "esm/index.js"), magicESM);
+ }
+ 
+ async function combineFilesInDirs(dirs, ext) {
+diff --git a/node_modules/@remix-run/dev/colors.d.ts b/node_modules/@remix-run/dev/dist/colors.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/colors.d.ts
+rename to node_modules/@remix-run/dev/dist/colors.d.ts
+diff --git a/node_modules/@remix-run/dev/colors.js b/node_modules/@remix-run/dev/dist/colors.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/colors.js
+rename to node_modules/@remix-run/dev/dist/colors.js
+index 357fbca..1a76ead 100644
+--- a/node_modules/@remix-run/dev/colors.js
++++ b/node_modules/@remix-run/dev/dist/colors.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler.d.ts b/node_modules/@remix-run/dev/dist/compiler.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler.js b/node_modules/@remix-run/dev/dist/compiler.js
+similarity index 94%
+rename from node_modules/@remix-run/dev/compiler.js
+rename to node_modules/@remix-run/dev/dist/compiler.js
+index e1c511d..6b3fae3 100644
+--- a/node_modules/@remix-run/dev/compiler.js
++++ b/node_modules/@remix-run/dev/dist/compiler.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -19,6 +19,7 @@ var fse = require('fs-extra');
+ var debounce = require('lodash.debounce');
+ var chokidar = require('chokidar');
+ var nodeModulesPolyfill = require('@esbuild-plugins/node-modules-polyfill');
++var esbuildPluginPnp = require('@yarnpkg/esbuild-plugin-pnp');
+ var build$1 = require('./build.js');
+ var config = require('./config.js');
+ var warnings = require('./compiler/warnings.js');
+@@ -124,6 +125,8 @@ async function watch(config$1, {
+   onFileDeleted,
+   onInitialBuild
+ } = {}) {
++  var _config$watchPaths;
++
+   let options = {
+     mode,
+     target,
+@@ -212,6 +215,9 @@ async function watch(config$1, {
+     toWatch.push(config$1.serverEntryPoint);
+   }
+ 
++  (_config$watchPaths = config$1.watchPaths) === null || _config$watchPaths === void 0 ? void 0 : _config$watchPaths.forEach(watchPath => {
++    toWatch.push(watchPath);
++  });
+   let watcher = chokidar__default["default"].watch(toWatch, {
+     persistent: true,
+     ignoreInitial: true,
+@@ -308,7 +314,7 @@ async function createBrowserBuild(config, options) {
+     entryPoints[id] = path__namespace.resolve(config.appDirectory, config.routes[id].file) + "?browser";
+   }
+ 
+-  let plugins = [urlImportsPlugin.urlImportsPlugin(), mdx.mdxPlugin(config), browserRouteModulesPlugin.browserRouteModulesPlugin(config, /\?browser$/), emptyModulesPlugin.emptyModulesPlugin(config, /\.server(\.[jt]sx?)?$/), nodeModulesPolyfill.NodeModulesPolyfillPlugin()];
++  let plugins = [urlImportsPlugin.urlImportsPlugin(), mdx.mdxPlugin(config), browserRouteModulesPlugin.browserRouteModulesPlugin(config, /\?browser$/), emptyModulesPlugin.emptyModulesPlugin(config, /\.server(\.[jt]sx?)?$/), nodeModulesPolyfill.NodeModulesPolyfillPlugin(), esbuildPluginPnp.pnpPlugin()];
+   return esbuild__namespace.build({
+     entryPoints,
+     outdir: config.assetsBuildDirectory,
+@@ -339,7 +345,6 @@ async function createBrowserBuild(config, options) {
+ }
+ 
+ function createServerBuild(config, options, assetsManifestPromiseRef) {
+-  let dependencies$1 = dependencies.getAppDependencies(config);
+   let stdin;
+   let entryPoints;
+ 
+@@ -355,7 +360,7 @@ function createServerBuild(config, options, assetsManifestPromiseRef) {
+ 
+   let isCloudflareRuntime = ["cloudflare-pages", "cloudflare-workers"].includes(config.serverBuildTarget ?? "");
+   let isDenoRuntime = config.serverBuildTarget === "deno";
+-  let plugins = [urlImportsPlugin.urlImportsPlugin(), mdx.mdxPlugin(config), emptyModulesPlugin.emptyModulesPlugin(config, /\.client(\.[jt]sx?)?$/), serverRouteModulesPlugin.serverRouteModulesPlugin(config), serverEntryModulePlugin.serverEntryModulePlugin(config), serverAssetsManifestPlugin.serverAssetsManifestPlugin(assetsManifestPromiseRef), serverBareModulesPlugin.serverBareModulesPlugin(config, dependencies$1, options.onWarning)];
++  let plugins = [urlImportsPlugin.urlImportsPlugin(), mdx.mdxPlugin(config), emptyModulesPlugin.emptyModulesPlugin(config, /\.client(\.[jt]sx?)?$/), serverRouteModulesPlugin.serverRouteModulesPlugin(config), serverEntryModulePlugin.serverEntryModulePlugin(config), serverAssetsManifestPlugin.serverAssetsManifestPlugin(assetsManifestPromiseRef), serverBareModulesPlugin.serverBareModulesPlugin(config, options.onWarning), esbuildPluginPnp.pnpPlugin()];
+ 
+   if (config.serverPlatform !== "node") {
+     plugins.unshift(nodeModulesPolyfill.NodeModulesPolyfillPlugin());
+@@ -371,6 +376,14 @@ function createServerBuild(config, options, assetsManifestPromiseRef) {
+     platform: config.serverPlatform,
+     format: config.serverModuleFormat,
+     treeShaking: true,
++    // The type of dead code elimination we want to do depends on the
++    // minify syntax property: https://github.com/evanw/esbuild/issues/672#issuecomment-1029682369
++    // Dev builds are leaving code that should be optimized away in the
++    // bundle causing server / testing code to be shipped to the browser.
++    // These are properly optimized away in prod builds today, and this
++    // PR makes dev mode behave closer to production in terms of dead
++    // code elimination / tree shaking is concerned.
++    minifySyntax: true,
+     minify: options.mode === build$1.BuildMode.Production && isCloudflareRuntime,
+     mainFields: isCloudflareRuntime ? ["browser", "module", "main"] : config.serverModuleFormat === "esm" ? ["module", "main"] : ["main", "module"],
+     target: options.target,
+diff --git a/node_modules/@remix-run/dev/compiler/assets.d.ts b/node_modules/@remix-run/dev/dist/compiler/assets.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/assets.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/assets.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/assets.js b/node_modules/@remix-run/dev/dist/compiler/assets.js
+similarity index 97%
+rename from node_modules/@remix-run/dev/compiler/assets.js
+rename to node_modules/@remix-run/dev/dist/compiler/assets.js
+index 873baab..2b5556e 100644
+--- a/node_modules/@remix-run/dev/compiler/assets.js
++++ b/node_modules/@remix-run/dev/dist/compiler/assets.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -59,7 +59,7 @@ async function createAssetsManifest(config, metafile) {
+   for (let key of Object.keys(metafile.outputs).sort()) {
+     let output = metafile.outputs[key];
+     if (!output.entryPoint) continue;
+-    let entryPointFile = path__namespace.resolve(output.entryPoint.replace(/(^browser-route-module:|\?browser$)/g, ""));
++    let entryPointFile = path__namespace.resolve(output.entryPoint.replace(/(^browser-route-module:|^pnp:|\?browser$)/g, ""));
+ 
+     if (entryPointFile === entryClientFile) {
+       entry = {
+diff --git a/node_modules/@remix-run/dev/compiler/dependencies.d.ts b/node_modules/@remix-run/dev/dist/compiler/dependencies.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/dependencies.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/dependencies.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/dependencies.js b/node_modules/@remix-run/dev/dist/compiler/dependencies.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/compiler/dependencies.js
+rename to node_modules/@remix-run/dev/dist/compiler/dependencies.js
+index 2b24abd..9bfbb87 100644
+--- a/node_modules/@remix-run/dev/compiler/dependencies.js
++++ b/node_modules/@remix-run/dev/dist/compiler/dependencies.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/loaders.d.ts b/node_modules/@remix-run/dev/dist/compiler/loaders.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/loaders.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/loaders.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/loaders.js b/node_modules/@remix-run/dev/dist/compiler/loaders.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/compiler/loaders.js
+rename to node_modules/@remix-run/dev/dist/compiler/loaders.js
+index dd2c349..7869c24 100644
+--- a/node_modules/@remix-run/dev/compiler/loaders.js
++++ b/node_modules/@remix-run/dev/dist/compiler/loaders.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/browserRouteModulesPlugin.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/browserRouteModulesPlugin.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/plugins/browserRouteModulesPlugin.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/browserRouteModulesPlugin.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/browserRouteModulesPlugin.js b/node_modules/@remix-run/dev/dist/compiler/plugins/browserRouteModulesPlugin.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/compiler/plugins/browserRouteModulesPlugin.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/browserRouteModulesPlugin.js
+index 08faae1..7235402 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/browserRouteModulesPlugin.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/browserRouteModulesPlugin.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/emptyModulesPlugin.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/emptyModulesPlugin.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/plugins/emptyModulesPlugin.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/emptyModulesPlugin.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/emptyModulesPlugin.js b/node_modules/@remix-run/dev/dist/compiler/plugins/emptyModulesPlugin.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/compiler/plugins/emptyModulesPlugin.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/emptyModulesPlugin.js
+index 83413e7..d915997 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/emptyModulesPlugin.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/emptyModulesPlugin.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/mdx.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/mdx.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/plugins/mdx.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/mdx.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/mdx.js b/node_modules/@remix-run/dev/dist/compiler/plugins/mdx.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/compiler/plugins/mdx.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/mdx.js
+index fad29a6..1a346ca 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/mdx.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/mdx.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverAssetsManifestPlugin.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/serverAssetsManifestPlugin.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverAssetsManifestPlugin.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverAssetsManifestPlugin.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverAssetsManifestPlugin.js b/node_modules/@remix-run/dev/dist/compiler/plugins/serverAssetsManifestPlugin.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverAssetsManifestPlugin.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverAssetsManifestPlugin.js
+index 0204342..64ab5ba 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/serverAssetsManifestPlugin.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/serverAssetsManifestPlugin.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverBareModulesPlugin.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/serverBareModulesPlugin.d.ts
+similarity index 76%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverBareModulesPlugin.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverBareModulesPlugin.d.ts
+index 996e5b8..ab25587 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/serverBareModulesPlugin.d.ts
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/serverBareModulesPlugin.d.ts
+@@ -5,4 +5,4 @@ import type { RemixConfig } from "../../config";
+  * This includes externalizing for node based plaforms, and bundling for single file
+  * environments such as cloudflare.
+  */
+-export declare function serverBareModulesPlugin(remixConfig: RemixConfig, dependencies: Record<string, string>, onWarning?: (warning: string, key: string) => void): Plugin;
++export declare function serverBareModulesPlugin(remixConfig: RemixConfig, onWarning?: (warning: string, key: string) => void): Plugin;
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverBareModulesPlugin.js b/node_modules/@remix-run/dev/dist/compiler/plugins/serverBareModulesPlugin.js
+similarity index 93%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverBareModulesPlugin.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverBareModulesPlugin.js
+index 6e2008e..1bbd95e 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/serverBareModulesPlugin.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/serverBareModulesPlugin.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -29,7 +29,7 @@ var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
+  * environments such as cloudflare.
+  */
+ 
+-function serverBareModulesPlugin(remixConfig, dependencies, onWarning) {
++function serverBareModulesPlugin(remixConfig, onWarning) {
+   let isDenoRuntime = remixConfig.serverBuildTarget === "deno"; // Resolve paths according to tsconfig paths property
+ 
+   let matchPath = isDenoRuntime ? undefined : index.createMatchPath();
+@@ -76,8 +76,12 @@ function serverBareModulesPlugin(remixConfig, dependencies, onWarning) {
+ 
+         let packageName = getNpmPackageName(path$1); // Warn if we can't find an import for a package.
+ 
+-        if (onWarning && !isNodeBuiltIn(packageName) && !/\bnode_modules\b/.test(importer) && !dependencies[packageName]) {
+-          onWarning(`The path "${path$1}" is imported in ` + `${path.relative(process.cwd(), importer)} but ` + `${packageName} is not listed in your package.json dependencies. ` + `Did you forget to install it?`, packageName);
++        if (onWarning && !isNodeBuiltIn(packageName) && !/\bnode_modules\b/.test(importer)) {
++          try {
++            require.resolve(packageName);
++          } catch (error) {
++            onWarning(`The path "${path$1}" is imported in ` + `${path.relative(process.cwd(), importer)} but ` + `${packageName} is not listed in your package.json dependencies. ` + `Did you forget to install it?`, packageName);
++          }
+         }
+ 
+         switch (remixConfig.serverBuildTarget) {
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverEntryModulePlugin.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/serverEntryModulePlugin.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverEntryModulePlugin.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverEntryModulePlugin.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverEntryModulePlugin.js b/node_modules/@remix-run/dev/dist/compiler/plugins/serverEntryModulePlugin.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverEntryModulePlugin.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverEntryModulePlugin.js
+index c722081..3e0faa5 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/serverEntryModulePlugin.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/serverEntryModulePlugin.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverRouteModulesPlugin.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/serverRouteModulesPlugin.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverRouteModulesPlugin.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverRouteModulesPlugin.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/serverRouteModulesPlugin.js b/node_modules/@remix-run/dev/dist/compiler/plugins/serverRouteModulesPlugin.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/compiler/plugins/serverRouteModulesPlugin.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/serverRouteModulesPlugin.js
+index 4eb29c2..6909809 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/serverRouteModulesPlugin.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/serverRouteModulesPlugin.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/urlImportsPlugin.d.ts b/node_modules/@remix-run/dev/dist/compiler/plugins/urlImportsPlugin.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/plugins/urlImportsPlugin.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/urlImportsPlugin.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/plugins/urlImportsPlugin.js b/node_modules/@remix-run/dev/dist/compiler/plugins/urlImportsPlugin.js
+similarity index 97%
+rename from node_modules/@remix-run/dev/compiler/plugins/urlImportsPlugin.js
+rename to node_modules/@remix-run/dev/dist/compiler/plugins/urlImportsPlugin.js
+index 4ba1436..4711841 100644
+--- a/node_modules/@remix-run/dev/compiler/plugins/urlImportsPlugin.js
++++ b/node_modules/@remix-run/dev/dist/compiler/plugins/urlImportsPlugin.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/routes.d.ts b/node_modules/@remix-run/dev/dist/compiler/routes.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/routes.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/routes.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/routes.js b/node_modules/@remix-run/dev/dist/compiler/routes.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/compiler/routes.js
+rename to node_modules/@remix-run/dev/dist/compiler/routes.js
+index 5b777b7..3fab62f 100644
+--- a/node_modules/@remix-run/dev/compiler/routes.js
++++ b/node_modules/@remix-run/dev/dist/compiler/routes.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/dist/compiler/shims/react.ts b/node_modules/@remix-run/dev/dist/compiler/shims/react.ts
+new file mode 100644
+index 0000000..44af7fb
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/compiler/shims/react.ts
+@@ -0,0 +1,3 @@
++// eslint-disable-next-line import/no-extraneous-dependencies
++import * as React from "react";
++export { React };
+diff --git a/node_modules/@remix-run/dev/compiler/utils/crypto.d.ts b/node_modules/@remix-run/dev/dist/compiler/utils/crypto.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/utils/crypto.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/utils/crypto.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/utils/crypto.js b/node_modules/@remix-run/dev/dist/compiler/utils/crypto.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/compiler/utils/crypto.js
+rename to node_modules/@remix-run/dev/dist/compiler/utils/crypto.js
+index 46b27dc..60d6bc1 100644
+--- a/node_modules/@remix-run/dev/compiler/utils/crypto.js
++++ b/node_modules/@remix-run/dev/dist/compiler/utils/crypto.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/utils/fs.d.ts b/node_modules/@remix-run/dev/dist/compiler/utils/fs.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/utils/fs.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/utils/fs.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/utils/fs.js b/node_modules/@remix-run/dev/dist/compiler/utils/fs.js
+similarity index 97%
+rename from node_modules/@remix-run/dev/compiler/utils/fs.js
+rename to node_modules/@remix-run/dev/dist/compiler/utils/fs.js
+index 986b2b0..bd5b36c 100644
+--- a/node_modules/@remix-run/dev/compiler/utils/fs.js
++++ b/node_modules/@remix-run/dev/dist/compiler/utils/fs.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/utils/tsconfig/index.d.ts b/node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/utils/tsconfig/index.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/index.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/utils/tsconfig/index.js b/node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/index.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/compiler/utils/tsconfig/index.js
+rename to node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/index.js
+index a78e24f..850be0f 100644
+--- a/node_modules/@remix-run/dev/compiler/utils/tsconfig/index.js
++++ b/node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/index.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/utils/tsconfig/write-config-defaults.d.ts b/node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/write-config-defaults.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/utils/tsconfig/write-config-defaults.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/write-config-defaults.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/utils/tsconfig/write-config-defaults.js b/node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/write-config-defaults.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/compiler/utils/tsconfig/write-config-defaults.js
+rename to node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/write-config-defaults.js
+index 0fbcfcb..33af48e 100644
+--- a/node_modules/@remix-run/dev/compiler/utils/tsconfig/write-config-defaults.js
++++ b/node_modules/@remix-run/dev/dist/compiler/utils/tsconfig/write-config-defaults.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/utils/url.d.ts b/node_modules/@remix-run/dev/dist/compiler/utils/url.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/utils/url.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/utils/url.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/utils/url.js b/node_modules/@remix-run/dev/dist/compiler/utils/url.js
+similarity index 97%
+rename from node_modules/@remix-run/dev/compiler/utils/url.js
+rename to node_modules/@remix-run/dev/dist/compiler/utils/url.js
+index f1529c8..a8712d8 100644
+--- a/node_modules/@remix-run/dev/compiler/utils/url.js
++++ b/node_modules/@remix-run/dev/dist/compiler/utils/url.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/virtualModules.d.ts b/node_modules/@remix-run/dev/dist/compiler/virtualModules.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/virtualModules.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/virtualModules.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/virtualModules.js b/node_modules/@remix-run/dev/dist/compiler/virtualModules.js
+similarity index 96%
+rename from node_modules/@remix-run/dev/compiler/virtualModules.js
+rename to node_modules/@remix-run/dev/dist/compiler/virtualModules.js
+index 0c6be2f..bae6e19 100644
+--- a/node_modules/@remix-run/dev/compiler/virtualModules.js
++++ b/node_modules/@remix-run/dev/dist/compiler/virtualModules.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/compiler/warnings.d.ts b/node_modules/@remix-run/dev/dist/compiler/warnings.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/compiler/warnings.d.ts
+rename to node_modules/@remix-run/dev/dist/compiler/warnings.d.ts
+diff --git a/node_modules/@remix-run/dev/compiler/warnings.js b/node_modules/@remix-run/dev/dist/compiler/warnings.js
+similarity index 94%
+rename from node_modules/@remix-run/dev/compiler/warnings.js
+rename to node_modules/@remix-run/dev/dist/compiler/warnings.js
+index 8e741b4..a9a064f 100644
+--- a/node_modules/@remix-run/dev/compiler/warnings.js
++++ b/node_modules/@remix-run/dev/dist/compiler/warnings.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/config.d.ts b/node_modules/@remix-run/dev/dist/config.d.ts
+similarity index 95%
+rename from node_modules/@remix-run/dev/config.d.ts
+rename to node_modules/@remix-run/dev/dist/config.d.ts
+index df065bd..595db91 100644
+--- a/node_modules/@remix-run/dev/config.d.ts
++++ b/node_modules/@remix-run/dev/dist/config.d.ts
+@@ -108,6 +108,10 @@ export interface AppConfig {
+      * in a CJS build.
+      */
+     serverDependenciesToBundle?: Array<string | RegExp>;
++    /**
++     * A function for defining custom directories to watch while running `remix dev`, in addition to `appDirectory`.
++     */
++    watchPaths?: string | string[] | (() => Promise<string | string[]> | string | string[]);
+ }
+ /**
+  * Fully resolved configuration object we use throughout Remix.
+@@ -192,6 +196,10 @@ export interface RemixConfig {
+      * in a CJS build.
+      */
+     serverDependenciesToBundle: Array<string | RegExp>;
++    /**
++     * A list of directories to watch.
++     */
++    watchPaths: string[];
+ }
+ /**
+  * Returns a fully resolved config object from the remix.config.js in the given
+diff --git a/node_modules/@remix-run/dev/config.js b/node_modules/@remix-run/dev/dist/config.js
+similarity index 93%
+rename from node_modules/@remix-run/dev/config.js
+rename to node_modules/@remix-run/dev/dist/config.js
+index 06daccb..6ca8475 100644
+--- a/node_modules/@remix-run/dev/config.js
++++ b/node_modules/@remix-run/dev/dist/config.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+@@ -128,7 +128,7 @@ async function readConfig(remixRoot, serverMode = serverModes.ServerMode.Product
+ 
+   let assetsBuildDirectory = path__namespace.resolve(rootDirectory, appConfig.assetsBuildDirectory || appConfig.browserBuildDirectory || path__namespace.join("public", "build"));
+   let devServerPort = Number(process.env.REMIX_DEV_SERVER_WS_PORT) || (await getPort__default["default"]({
+-    port: Number(appConfig.devServerPort) || undefined
++    port: Number(appConfig.devServerPort) || 8002
+   })); // set env variable so un-bundled servers can use it
+ 
+   process.env.REMIX_DEV_SERVER_WS_PORT = `${devServerPort}`;
+@@ -178,6 +178,15 @@ async function readConfig(remixRoot, serverMode = serverModes.ServerMode.Product
+     }
+   }
+ 
++  let watchPaths = [];
++
++  if (typeof appConfig.watchPaths === "function") {
++    let directories = await appConfig.watchPaths();
++    watchPaths = watchPaths.concat(Array.isArray(directories) ? directories : [directories]);
++  } else if (appConfig.watchPaths) {
++    watchPaths = watchPaths.concat(Array.isArray(appConfig.watchPaths) ? appConfig.watchPaths : [appConfig.watchPaths]);
++  }
++
+   let serverBuildTargetEntryModule = `export * from ${JSON.stringify(virtualModules.serverBuildVirtualModule.id)};`;
+   let serverDependenciesToBundle = appConfig.serverDependenciesToBundle || [];
+   return {
+@@ -199,7 +208,8 @@ async function readConfig(remixRoot, serverMode = serverModes.ServerMode.Product
+     serverBuildTargetEntryModule,
+     serverEntryPoint: customServerEntryPoint,
+     serverDependenciesToBundle,
+-    mdx
++    mdx,
++    watchPaths
+   };
+ }
+ 
+diff --git a/node_modules/@remix-run/dev/config/format.d.ts b/node_modules/@remix-run/dev/dist/config/format.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/config/format.d.ts
+rename to node_modules/@remix-run/dev/dist/config/format.d.ts
+diff --git a/node_modules/@remix-run/dev/config/format.js b/node_modules/@remix-run/dev/dist/config/format.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/config/format.js
+rename to node_modules/@remix-run/dev/dist/config/format.js
+index 38ae2c3..eb91634 100644
+--- a/node_modules/@remix-run/dev/config/format.js
++++ b/node_modules/@remix-run/dev/dist/config/format.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/config/routes.d.ts b/node_modules/@remix-run/dev/dist/config/routes.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/config/routes.d.ts
+rename to node_modules/@remix-run/dev/dist/config/routes.d.ts
+diff --git a/node_modules/@remix-run/dev/config/routes.js b/node_modules/@remix-run/dev/dist/config/routes.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/config/routes.js
+rename to node_modules/@remix-run/dev/dist/config/routes.js
+index 8d4b15e..ca46388 100644
+--- a/node_modules/@remix-run/dev/config/routes.js
++++ b/node_modules/@remix-run/dev/dist/config/routes.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/config/routesConvention.d.ts b/node_modules/@remix-run/dev/dist/config/routesConvention.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/config/routesConvention.d.ts
+rename to node_modules/@remix-run/dev/dist/config/routesConvention.d.ts
+diff --git a/node_modules/@remix-run/dev/config/routesConvention.js b/node_modules/@remix-run/dev/dist/config/routesConvention.js
+similarity index 99%
+rename from node_modules/@remix-run/dev/config/routesConvention.js
+rename to node_modules/@remix-run/dev/dist/config/routesConvention.js
+index 25378dd..9521bf4 100644
+--- a/node_modules/@remix-run/dev/config/routesConvention.js
++++ b/node_modules/@remix-run/dev/dist/config/routesConvention.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/config/serverModes.d.ts b/node_modules/@remix-run/dev/dist/config/serverModes.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/config/serverModes.d.ts
+rename to node_modules/@remix-run/dev/dist/config/serverModes.d.ts
+diff --git a/node_modules/@remix-run/dev/config/serverModes.js b/node_modules/@remix-run/dev/dist/config/serverModes.js
+similarity index 96%
+rename from node_modules/@remix-run/dev/config/serverModes.js
+rename to node_modules/@remix-run/dev/dist/config/serverModes.js
+index a33b4cf..9060d3f 100644
+--- a/node_modules/@remix-run/dev/config/serverModes.js
++++ b/node_modules/@remix-run/dev/dist/config/serverModes.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/env.d.ts b/node_modules/@remix-run/dev/dist/env.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/env.d.ts
+rename to node_modules/@remix-run/dev/dist/env.d.ts
+diff --git a/node_modules/@remix-run/dev/env.js b/node_modules/@remix-run/dev/dist/env.js
+similarity index 98%
+rename from node_modules/@remix-run/dev/env.js
+rename to node_modules/@remix-run/dev/dist/env.js
+index 447ceff..e21c387 100644
+--- a/node_modules/@remix-run/dev/env.js
++++ b/node_modules/@remix-run/dev/dist/env.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/index.d.ts b/node_modules/@remix-run/dev/dist/index.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/index.d.ts
+rename to node_modules/@remix-run/dev/dist/index.d.ts
+diff --git a/node_modules/@remix-run/dev/index.js b/node_modules/@remix-run/dev/dist/index.js
+similarity index 95%
+rename from node_modules/@remix-run/dev/index.js
+rename to node_modules/@remix-run/dev/dist/index.js
+index e96a3e8..21ba388 100644
+--- a/node_modules/@remix-run/dev/index.js
++++ b/node_modules/@remix-run/dev/dist/index.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/invariant.d.ts b/node_modules/@remix-run/dev/dist/invariant.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/invariant.d.ts
+rename to node_modules/@remix-run/dev/dist/invariant.d.ts
+diff --git a/node_modules/@remix-run/dev/invariant.js b/node_modules/@remix-run/dev/dist/invariant.js
+similarity index 95%
+rename from node_modules/@remix-run/dev/invariant.js
+rename to node_modules/@remix-run/dev/dist/invariant.js
+index 0a29ef1..9931744 100644
+--- a/node_modules/@remix-run/dev/invariant.js
++++ b/node_modules/@remix-run/dev/dist/invariant.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/logging.d.ts b/node_modules/@remix-run/dev/dist/logging.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/logging.d.ts
+rename to node_modules/@remix-run/dev/dist/logging.d.ts
+diff --git a/node_modules/@remix-run/dev/logging.js b/node_modules/@remix-run/dev/dist/logging.js
+similarity index 93%
+rename from node_modules/@remix-run/dev/logging.js
+rename to node_modules/@remix-run/dev/dist/logging.js
+index a9cedee..2342cd2 100644
+--- a/node_modules/@remix-run/dev/logging.js
++++ b/node_modules/@remix-run/dev/dist/logging.js
+@@ -1,5 +1,5 @@
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *
+diff --git a/node_modules/@remix-run/dev/modules.d.ts b/node_modules/@remix-run/dev/dist/modules.d.ts
+similarity index 100%
+rename from node_modules/@remix-run/dev/modules.d.ts
+rename to node_modules/@remix-run/dev/dist/modules.d.ts
+diff --git a/node_modules/@remix-run/dev/dist/server-build.d.ts b/node_modules/@remix-run/dev/dist/server-build.d.ts
+new file mode 100644
+index 0000000..54f6290
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/server-build.d.ts
+@@ -0,0 +1,4 @@
++import type { ServerBuild } from "@remix-run/server-runtime";
++export declare const assets: ServerBuild["assets"];
++export declare const entry: ServerBuild["entry"];
++export declare const routes: ServerBuild["routes"];
+diff --git a/node_modules/@remix-run/dev/dist/server-build.js b/node_modules/@remix-run/dev/dist/server-build.js
+new file mode 100644
+index 0000000..0c07b2e
+--- /dev/null
++++ b/node_modules/@remix-run/dev/dist/server-build.js
+@@ -0,0 +1,24 @@
++#!/usr/bin/env node
++/**
++ * @remix-run/dev v1.6.4
++ *
++ * Copyright (c) Remix Software Inc.
++ *
++ * This source code is licensed under the MIT license found in the
++ * LICENSE.md file in the root directory of this source tree.
++ *
++ * @license MIT
++ */
++'use strict';
++
++Object.defineProperty(exports, '__esModule', { value: true });
++
++/* eslint-disable no-unreachable */
++throw new Error("@remix-run/dev/server-build is not meant to be used directly from node_modules." + " It exists to provide type definitions for a virtual module provided" + " by the Remix compiler at build time.");
++const assets = undefined;
++const entry = undefined;
++const routes = undefined;
++
++exports.assets = assets;
++exports.entry = entry;
++exports.routes = routes;
+diff --git a/node_modules/@remix-run/dev/server-build.js b/node_modules/@remix-run/dev/server-build.js
+index bc0c923..0c07b2e 100644
+--- a/node_modules/@remix-run/dev/server-build.js
++++ b/node_modules/@remix-run/dev/server-build.js
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env node
+ /**
+- * @remix-run/dev v1.6.0
++ * @remix-run/dev v1.6.4
+  *
+  * Copyright (c) Remix Software Inc.
+  *

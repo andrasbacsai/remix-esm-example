@@ -1,8 +1,6 @@
 /** @type {import("@remix-run/dev").AppConfig} */
-let config = {
-  serverModuleFormat: "esm",
+module.exports = {
   ignoredRouteFiles: ["**/.*"],
   devServerPort: 8002,
 };
 
-export default config;
